@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIE API - Painel de Controle</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="/" class="navbar-logo">SIE API</a>
+            <ul class="navbar-menu">
+                <li class="navbar-item"><a href="/dashboard" class="navbar-link">Dashboard</a></li>
+                <li class="navbar-item"><a href="/instances" class="navbar-link">Instâncias</a></li>
+                <li class="navbar-item"><a href="/settings" class="navbar-link">Configurações</a></li>
+                <li class="navbar-item"><a href="/logout" class="navbar-link">Sair</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container dashboard">
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Dashboard</h1>
+            <div class="dashboard-actions">
+                <button class="btn btn-primary" id="createInstanceBtn">
+                    <i class="fas fa-plus"></i> Nova Instância
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--primary-color);">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalInstances">0</div>
+                    <div class="stat-label">Instâncias</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--secondary-color);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="connectedInstances">0</div>
+                    <div class="stat-label">Conectadas</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: var(--accent-color);">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="disconnectedInstances">0</div>
+                    <div class="stat-label">Desconectadas</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: #ff9800;">
+                    <i class="fas fa-comment"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalMessages">0</div>
+                    <div class="stat-label">Mensagens</div>
+                </div>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 1rem; color: var(--primary-color);">Suas Instâncias</h2>
+        
+        <div class="row" id="instancesContainer">
+            <!-- As instâncias serão carregadas dinamicamente aqui -->
+        </div>
+    </div>
+
+    <!-- Modal para criar nova instância -->
+    <div class="modal-backdrop" id="createInstanceModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Nova Instância</h2>
+                <button class="modal-close" id="closeCreateInstanceModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createInstanceForm">
+                    <div class="form-group">
+                        <label for="instanceName" class="form-label">Nome da Instância</label>
+                        <input type="text" id="instanceName" class="form-control" placeholder="Ex: WhatsApp Pessoal" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="instanceType" class="form-label">Tipo de Instância</label>
+                        <select id="instanceType" class="form-control">
+                            <option value="whatsapp-web.js">WhatsApp Web.js</option>
+                            <option value="baileys">Baileys</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="webhookUrl" class="form-label">URL do Webhook (n8n)</label>
+                        <input type="url" id="webhookUrl" class="form-control" placeholder="https://seu-n8n.com/webhook/123">
+                    </div>
+                    <div class="form-group">
+                        <div style="display: flex; align-items: center;">
+                            <input type="checkbox" id="ignoreGroups" style="margin-right: 10px;">
+                            <label for="ignoreGroups" class="form-label" style="margin-bottom: 0;">Ignorar mensagens de grupos no n8n</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div style="display: flex; align-items: center;">
+                            <input type="checkbox" id="blockCalls" style="margin-right: 10px;">
+                            <label for="blockCalls" class="form-label" style="margin-bottom: 0;">Bloquear ligações</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div style="display: flex; align-items: center;">
+                            <input type="checkbox" id="preventMessageDeletion" style="margin-right: 10px;">
+                            <label for="preventMessageDeletion" class="form-label" style="margin-bottom: 0;">Impedir apagamento de mensagens</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancelCreateInstance">Cancelar</button>
+                <button class="btn btn-primary" id="submitCreateInstance">Criar Instância</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para exibir QR Code -->
+    <div class="modal-backdrop" id="qrCodeModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Conectar WhatsApp</h2>
+                <button class="modal-close" id="closeQrCodeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="qr-container">
+                    <div class="qr-code" id="qrCodeImage">
+                        <!-- QR Code será exibido aqui -->
+                    </div>
+                    <div class="qr-instructions">
+                        <p>Escaneie o QR Code com seu WhatsApp para conectar a instância.</p>
+                        <p>1. Abra o WhatsApp no seu celular</p>
+                        <p>2. Toque em Menu ou Configurações e selecione WhatsApp Web</p>
+                        <p>3. Aponte seu celular para esta tela para capturar o código</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+    <script>
+        // Variáveis globais
+        let token = localStorage.getItem('token');
+        let currentUser = null;
+        let instances = [];
+        let socket = null;
+        let currentQrInstance = null;
+
+        // Verificar autenticação
+        function checkAuth() {
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            // Obter informações do usuário
+            fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Não autorizado');
+                }
+                return response.json();
+            })
+            .then(data => {
+                currentUser = data.user;
+                loadInstances();
+            })
+            .catch(error => {
+                console.error('Erro de autenticação:', error);
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+            });
+        }
+
+        // Carregar instâncias
+        function loadInstances() {
+            fetch('/api/whatsapp/instances', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                instances = data.instances;
+                updateStats();
+                renderInstances();
+            })
+            .catch(error => {
+                console.error('Erro ao carregar instâncias:', error);
+            });
+        }
+
+        // Atualizar estatísticas
+        function updateStats() {
+            const totalInstances = instances.length;
+            const connectedInstances = instances.filter(instance => instance.is_connected).length;
+            const disconnectedInstances = totalInstances - connectedInstances;
+
+            document.getElementById('totalInstances').textContent = totalInstances;
+            document.getElementById('connectedInstances').textContent = connectedInstances;
+            document.getElementById('disconnectedInstances').textContent = disconnectedInstances;
+            // O total de mensagens seria obtido de uma API separada em uma implementação real
+            // Por enquanto, definimos um valor fictício
+            document.getElementById('totalMessages').textContent = '0';
+        }
+
+        // Renderizar instâncias
+        function renderInstances() {
+            const container = document.getElementById('instancesContainer');
+            container.innerHTML = '';
+
+            if (instances.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body" style="text-align: center;">
+                                <p>Você ainda não tem instâncias. Clique em "Nova Instância" para começar.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            instances.forEach(instance => {
+                const statusClass = instance.is_connected ? 'status-connected' : 'status-disconnected';
+                const statusText = instance.is_connected ? 'Conectado' : 'Desconectado';
+                const statusIcon = instance.is_connected ? 'check-circle' : 'times-circle';
+
+                const instanceCard = document.createElement('div');
+                instanceCard.className = 'col-12 col-md-6 col-lg-4';
+                instanceCard.innerHTML = `
+                    <div class="card instance-card">
+                        <div class="card-header">
+                            <div class="instance-header">
+                                <div class="instance-icon">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
+                                <div>
+                                    <h3 class="card-title">${instance.name}</h3>
+                                    <span class="instance-type">${instance.instance_type}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div style="margin-bottom: 1rem;">
+                                <span class="instance-status ${statusClass}">
+                                    <i class="fas fa-${statusIcon}"></i> ${statusText}
+                                </span>
+                            </div>
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong>Telefone:</strong> ${instance.phone_number || 'Não conectado'}
+                            </div>
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong>Webhook:</strong> ${instance.webhook_url ? 'Configurado' : 'Não configurado'}
+                            </div>
+                            <div>
+                                <strong>Configurações:</strong>
+                                <div style="margin-top: 0.5rem;">
+                                    ${instance.ignore_groups ? '<span class="badge" style="background-color: var(--secondary-color); color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-right: 5px;">Ignorar Grupos</span>' : ''}
+                                    ${instance.block_calls ? '<span class="badge" style="background-color: var(--accent-color); color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-right: 5px;">Bloquear Ligações</span>' : ''}
+                                    ${instance.prevent_message_deletion ? '<span class="badge" style="background-color: var(--primary-color); color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem;">Anti-Apagar</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            ${!instance.is_connected ? `
+                                <button class="btn btn-primary btn-connect" data-id="${instance.id}">
+                                    <i class="fas fa-qrcode"></i> Conectar
+                                </button>
+                            ` : `
+                                <button class="btn btn-outline btn-disconnect" data-id="${instance.id}">
+                                    <i class="fas fa-sign-out-alt"></i> Desconectar
+                                </button>
+                            `}
+                            <button class="btn btn-secondary btn-edit" data-id="${instance.id}">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="btn btn-accent btn-delete" data-id="${instance.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(instanceCard);
+            });
+
+            // Adicionar event listeners
+            document.querySelectorAll('.btn-connect').forEach(button => {
+                button.addEventListener('click', function() {
+                    const instanceId = this.getAttribute('data-id');
+                    initInstance(instanceId);
+                });
+            });
+
+            document.querySelectorAll('.btn-disconnect').forEach(button => {
+                button.addEventListener('click', function() {
+                    const instanceId = this.getAttribute('data-id');
+                    disconnectInstance(instanceId);
+                });
+            });
+
+            document.querySelectorAll('.btn-edit').forEach(button => {
+                button.addEventListener('click', function() {
+                    const instanceId = this.getAttribute('data-id');
+                    editInstance(instanceId);
+                });
+            });
+
+            document.querySelectorAll('.btn-delete').forEach(button => {
+                button.addEventListener('click', function() {
+                    const instanceId = this.getAttribute('data-id');
+                    deleteInstance(instanceId);
+                });
+            });
+        }
+
+        // Inicializar instância (mostrar QR code)
+        function initInstance(instanceId) {
+            fetch(`/api/whatsapp/instances/${instanceId}/init`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentQrInstance = instanceId;
+                    showQrCodeModal();
+                    
+                    // Inicializar socket para receber QR code
+                    if (!socket) {
+                        socket = io();
+                        
+                        socket.on('qr', (data) => {
+                            if (currentQrInstance) {
+                                const qrCodeImage = document.getElementById('qrCodeImage');
+                                qrCodeImage.innerHTML = '';
+                                QRCode.toCanvas(qrCodeImage, data.qr, function (error) {
+                                    if (error) console.error(error);
+                                });
+                            }
+                        });
+                        
+                        socket.on('authenticated', (data) => {
+                            alert('WhatsApp autenticado com sucesso!');
+                            hideQrCodeModal();
+                            loadInstances();
+                        });
+                        
+                        socket.on('ready', (data) => {
+                            alert('WhatsApp conectado e pronto para uso!');
+                            hideQrCodeModal();
+                            loadInstances();
+                        });
+                    }
+                    
+                    // Emitir evento para inicializar instância
+                    const instance = instances.find(i => i.id == instanceId);
+                    socket.emit('init', {
+                        sessionId: instance.session_id,
+                        type: instance.instance_type
+                    });
+                } else {
+                    alert('Erro ao inicializar instância: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao inicializar instância:', error);
+                alert('Erro ao inicializar instância. Tente novamente.');
+            });
+        }
+
+        // Desconectar instância
+        function disconnectInstance(instanceId) {
+            if (!confirm('Tem certeza que deseja desconectar esta instância?')) {
+                return;
+            }
+            
+            const instance = instances.find(i => i.id == instanceId);
+            
+            if (socket) {
+                socket.emit('logout', {
+                    sessionId: instance.session_id
+                });
+            }
+            
+            // Atualizar status na API
+            fetch(`/api/whatsapp/instances/${instanceId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    is_connected: false
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Instância desconectada com sucesso!');
+                    loadInstances();
+                } else {
+                    alert('Erro ao desconectar instância: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao desconectar instância:', error);
+                alert('Erro ao desconectar instância. Tente novamente.');
+            });
+        }
+
+        // Editar instância
+        function editInstance(instanceId) {
+            // Implementação simplificada - em uma aplicação real, abriria um modal de edição
+            alert('Funcionalidade de edição será implementada em breve.');
+        }
+
+        // Excluir instância
+        function deleteInstance(instanceId) {
+            if (!confirm('Tem certeza que deseja excluir esta instância? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            fetch(`/api/whatsapp/instances/${instanceId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Instância excluída com sucesso!');
+                    loadInstances();
+                } else {
+                    alert('Erro ao excluir instância: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao excluir instância:', error);
+                alert('Erro ao excluir instância. Tente novamente.');
+            });
+        }
+
+        // Criar nova instância
+        function createInstance() {
+            const name = document.getElementById('instanceName').value;
+            const type = document.getElementById('instanceType').value;
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            const ignoreGroups = document.getElementById('ignoreGroups').checked;
+            const blockCalls = document.getElementById('blockCalls').checked;
+            const preventMessageDeletion = document.getElementById('preventMessageDeletion').checked;
+            
+            if (!name) {
+                alert('Por favor, informe um nome para a instância.');
+                return;
+            }
+            
+            fetch('/api/whatsapp/instances', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    instance_type: type,
+                    webhook_url: webhookUrl,
+                    ignore_groups: ignoreGroups,
+                    block_calls: blockCalls,
+                    prevent_message_deletion: preventMessageDeletion
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Instância criada com sucesso!');
+                    hideCreateInstanceModal();
+                    loadInstances();
+                } else {
+                    alert('Erro ao criar instância: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao criar instância:', error);
+                alert('Erro ao criar instância. Tente novamente.');
+            });
+        }
+
+        // Mostrar modal de criação de instância
+        function showCreateInstanceModal() {
+            document.getElementById('createInstanceModal').style.display = 'flex';
+        }
+
+        // Esconder modal de criação de instância
+        function hideCreateInstanceModal() {
+            document.getElementById('createInstanceModal').style.display = 'none';
+            document.getElementById('createInstanceForm').reset();
+        }
+
+        // Mostrar modal de QR code
+        function showQrCodeModal() {
+            document.getElementById('qrCodeModal').style.display = 'flex';
+        }
+
+        // Esconder modal de QR code
+        function hideQrCodeModal() {
+            document.getElementById('qrCodeModal').style.display = 'none';
+            document.getElementById('qrCodeImage').innerHTML = '';
+            currentQrInstance = null;
+        }
+
+        // Event listeners
+        document.getElementById('createInstanceBtn').addEventListener('click', showCreateInstanceModal);
+        document.getElementById('closeCreateInstanceModal').addEventListener('click', hideCreateInstanceModal);
+        document.getElementById('cancelCreateInstance').addEventListener('click', hideCreateInstanceModal);
+        document.getElementById('submitCreateInstance').addEventListener('click', createInstance);
+        document.getElementById('closeQrCodeModal').addEventListener('click', hideQrCodeModal);
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html>

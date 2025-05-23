@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIE API - Cadastro</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <h1 style="color: var(--primary-color); font-size: 2.5rem; font-weight: 700;">SIE API</h1>
+            </div>
+            <h2 class="auth-title">Cadastro</h2>
+            
+            <div class="alert alert-danger" id="errorAlert" style="display: none;"></div>
+            <div class="alert alert-success" id="successAlert" style="display: none;"></div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="name" class="form-label">Nome</label>
+                    <input type="text" id="name" class="form-control" placeholder="Seu nome completo" required>
+                </div>
+                <div class="form-group">
+                    <label for="email" class="form-label">E-mail</label>
+                    <input type="email" id="email" class="form-control" placeholder="seu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password" class="form-label">Senha</label>
+                    <input type="password" id="password" class="form-control" placeholder="Sua senha" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword" class="form-label">Confirmar Senha</label>
+                    <input type="password" id="confirmPassword" class="form-control" placeholder="Confirme sua senha" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Cadastrar</button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Já tem uma conta? <a href="/login.html" class="auth-link">Faça login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se já está autenticado
+            const token = localStorage.getItem('token');
+            if (token) {
+                // Verificar se o token é válido
+                fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        localStorage.removeItem('token');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao verificar autenticação:', error);
+                    localStorage.removeItem('token');
+                });
+            }
+            
+            // Processar formulário de cadastro
+            document.getElementById('registerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('name').value;
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                
+                // Validar senhas
+                if (password !== confirmPassword) {
+                    showError('As senhas não coincidem.');
+                    return;
+                }
+                
+                fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message.includes('sucesso')) {
+                        showSuccess('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar sua conta.');
+                        document.getElementById('registerForm').reset();
+                        
+                        // Redirecionar para login após 3 segundos
+                        setTimeout(() => {
+                            window.location.href = '/login.html';
+                        }, 3000);
+                    } else {
+                        showError(data.message || 'Erro ao realizar cadastro.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao realizar cadastro:', error);
+                    showError('Erro ao realizar cadastro. Tente novamente mais tarde.');
+                });
+            });
+            
+            function showError(message) {
+                const errorAlert = document.getElementById('errorAlert');
+                errorAlert.textContent = message;
+                errorAlert.style.display = 'block';
+                
+                // Esconder alerta de sucesso se estiver visível
+                document.getElementById('successAlert').style.display = 'none';
+                
+                setTimeout(() => {
+                    errorAlert.style.display = 'none';
+                }, 5000);
+            }
+            
+            function showSuccess(message) {
+                const successAlert = document.getElementById('successAlert');
+                successAlert.textContent = message;
+                successAlert.style.display = 'block';
+                
+                // Esconder alerta de erro se estiver visível
+                document.getElementById('errorAlert').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
